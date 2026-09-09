@@ -1,29 +1,32 @@
 # IOT_PROJECT — ตรวจจับสภาพจราจรจากวิดีโอ
 
-ตรวจจับสภาพจราจรด้วย YOLO + ByteTrack แล้วส่งผลขึ้น MQTT สองที่พร้อมกัน
-คือ broker ในเครื่อง (ให้ Telegraf เขียนต่อเข้า InfluxDB เพื่อดูบน Grafana)
-และ broker กลางของวิชา (ให้ Kafka Connect ดึงเข้า Kafka เพื่อทำ ML ต่อ)
+ตรวจจับสภาพจราจรด้วย YOLO + ByteTrack แล้วส่งผลขึ้น MQTT
+จากนั้น Telegraf กระจายออกสองทาง คือเข้า InfluxDB เพื่อดูบน Grafana
+และเข้า Kafka ของวิชาโดยตรงเพื่อทำ ML ต่อ
 
 ```
-                        testmqtt.py (YOLO + ByteTrack)
-                                    │
-                   ┌────────────────┴────────────────┐
-                   │ topic                           │ topic
-                   │ traffic/6620301002              │ iot/6620301002/traffic/<กล้อง>/events
-                   ▼                                 ▼
-        Mosquitto ในเครื่อง (:1883)        VerneMQ กลาง (172.16.2.117:1883)
-                   │                                 │
-                   ▼                                 ▼
-             Telegraf                        Kafka Connect (MqttSourceConnector)
-                   │                                 │
-        ┌──────────┴──────────┐                      ▼
-        ▼                     ▼            Kafka topic ของวิชา
-  InfluxDB กลาง         Kafka ในเครื่อง     traffic-events-6620301002
-  bucket mini_project   traffic-events              │
-        │                     │                     ▼
-        ▼                     ▼             [สายที่ 2 ML ทำนายรถติด]
-   Grafana กลาง        [ทดสอบในเครื่อง]
+                 testmqtt.py (YOLO + ByteTrack)
+                             │
+            ┌────────────────┴────────────────┐
+            │ topic                           │ topic
+            │ traffic/6620301002              │ iot/6620301002/traffic/<กล้อง>/events
+            ▼                                 ▼
+ Mosquitto ในเครื่อง (:1883)        VerneMQ กลาง (172.16.2.117:1883)
+            │                                 │
+            ▼                            (ยังไม่มีใครอ่าน)
+      Telegraf
+            │
+   ┌────────┴─────────────────────┐
+   ▼                              ▼
+InfluxDB กลาง (:8086)      Kafka ของวิชา (172.16.2.117:9092)
+bucket mini_project        topic traffic-events-6620301002
+   │                              │
+   ▼                              ▼
+Grafana กลาง            [สายที่ 2 ML ทำนายรถติด]
 ```
+
+การส่ง MQTT ไป VerneMQ กลางยังคงไว้อยู่ แต่ตอนนี้ไม่มี Kafka Connect
+ตัวไหนอ่าน topic นั้นแล้ว ดูหัวข้อ [เส้นทางเข้า Kafka ของวิชา](#เส้นทางเข้า-kafka-ของวิชา)
 
 ## ติดตั้ง
 
@@ -157,62 +160,61 @@ python testmqtt.py test.mov --loop
 
 ## เส้นทางเข้า Kafka ของวิชา
 
-**ไม่มีใครส่งเข้า Kafka ของอาจารย์ตรง ๆ ได้** broker ประกาศตัวเอง
-(`advertised.listeners`) ว่าอยู่ที่ `localhost:9092` และ `kafka:29092`
-ซึ่งเครื่องอื่นในเน็ตเวิร์กเข้าไม่ถึงทั้งคู่ ส่วนพอร์ต 29092 ก็ไม่ได้เปิดออกมา
+Telegraf เขียนเข้า Kafka ของอาจารย์โดยตรงที่ `172.16.2.117:9092`
+topic `traffic-events-6620301002` ไม่ต้องผ่านตัวกลางอะไรอีก
 
-ระบบจึงออกแบบให้ส่งผ่าน MQTT แทน นักศึกษา publish ไปที่ VerneMQ กลาง
-แล้ว Kafka Connect ที่รันอยู่บนเครื่องเดียวกับ broker เป็นคนดึงเข้า Kafka ให้
+### เคยส่งตรงไม่ได้ ตอนนี้ได้แล้ว
 
-```
-เครื่องเรา ── MQTT publish ──▶ VerneMQ 172.16.2.117:1883
-                                        │
-                                        ▼
-                             Kafka Connect (MqttSourceConnector)
-                                        │
-                                        ▼
-                             Kafka topic: traffic-events-6620301002
-```
+เดิม broker ประกาศตัวเอง (`advertised.listeners`) ว่าอยู่ที่ `localhost:9092`
+ซึ่งเครื่องอื่นเข้าไม่ถึง client จะเด้งไปหา localhost ของตัวเองแล้ว timeout
+ตอนนั้นจึงต้องอ้อมด้วยการ publish MQTT ไป VerneMQ กลาง
+แล้วให้ Kafka Connect บนเครื่องอาจารย์ดึงเข้า Kafka ให้
 
-**คอนเวนชันของ MQTT topic** คือ `iot/<รหัสนักศึกษา>/traffic/<camera_id>/<ชนิด>`
-โดยชนิดที่เห็นใช้กันมี `events`, `metrics`, `health` ของเราส่ง `events` อย่างเดียว
+วันที่ 2026-09-09 อาจารย์แก้เป็น `172.16.2.117:9092` และรีเซ็ตระบบ
+ซึ่งลบ connector ทั้งหมดทิ้งไปด้วย จึงเปลี่ยนมาส่งตรงแทน
 
-### connector ของเรา
-
-สร้างไว้แล้วผ่าน REST API ที่ `http://172.16.2.117:8083` ชื่อ
-`mqtt-source-events-6620301002` ตั้งค่าเหมือนของเพื่อนทุกอย่างยกเว้นรหัสนักศึกษา
-
-เช็กสถานะ
+เช็กค่าปัจจุบันได้ที่
 
 ```bash
-curl -s http://172.16.2.117:8083/connectors/mqtt-source-events-6620301002/status
+curl -s "http://172.16.2.117:8080/api/clusters/IoT-Kafka-Cluster/brokers/1/configs" \
+  | python3 -c "import sys,json;[print(c['name'],'=',c['value']) for c in json.load(sys.stdin) if c['name']=='advertised.listeners']"
 ```
 
-ต้องได้ `"state":"RUNNING"` ทั้งตัว connector และ task
+ถ้าวันไหนกลับไปเป็น `localhost:9092` อีก จะส่งตรงไม่ได้ทันที
+ต้องกลับไปใช้เส้นทาง MQTT แล้วสร้าง connector ใหม่
 
-ถ้าต้องสร้างใหม่ (เช่นอาจารย์ล้างระบบ)
+### รูปแบบข้อความใน Kafka
 
-```bash
-curl -X POST http://172.16.2.117:8083/connectors \
-  -H "Content-Type: application/json" \
-  -d '{
-  "name": "mqtt-source-events-6620301002",
-  "config": {
-    "connector.class": "io.confluent.connect.mqtt.MqttSourceConnector",
-    "tasks.max": "1",
-    "mqtt.server.uri": "tcp://vernemq1:1883",
-    "mqtt.topics": "iot/6620301002/traffic/+/events",
-    "mqtt.qos": "1",
-    "mqtt.clean.session.enabled": "true",
-    "mqtt.client.id": "kafka-connect-traffic-events-6620301002",
-    "kafka.topic": "traffic-events-6620301002",
-    "confluent.topic.bootstrap.servers": "kafka:29092",
-    "confluent.topic.replication.factor": "1",
-    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
-    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter"
-  }
-}'
+Telegraf ห่อข้อมูลเป็นรูปแบบของตัวเอง ไม่ใช่ payload ดิบแบบที่ส่งขึ้น MQTT
+
+```json
+{
+  "fields": {"bus": 0, "car": 6, "congestion_level": 0, "motorcycle": 0,
+             "slow_vehicle_ratio": 0.02, "truck": 0, "vehicles_in_roi": 6},
+  "name": "traffic_6620301002",
+  "tags": {"camera_id": "CAM_BUILDING2_FL02", "student_id": "6620301002",
+           "topic": "traffic/6620301002"},
+  "timestamp": 1788947816
+}
 ```
+
+ต่างจาก payload ดิบตรงที่ค่าถูกแยกเป็น `fields` กับ `tags` และ `timestamp`
+เป็นตัวเลข Unix ไม่ใช่สตริง ISO ตัวอ่านในสายที่ 2 ต้องแกะตามรูปแบบนี้
+
+อยากได้เวลาเป็น ISO เหมือนเดิมให้เติมใน `[[outputs.kafka]]`
+
+```toml
+json_timestamp_format = "2006-01-02T15:04:05Z07:00"
+```
+
+### MQTT ไป VerneMQ กลางยังส่งอยู่
+
+`testmqtt.py` ยังส่งขึ้น VerneMQ ที่ `172.16.2.117:1883` topic
+`iot/6620301002/traffic/<camera_id>/events` ตามคอนเวนชันของวิชา
+(ชนิดที่เห็นใช้กันมี `events`, `metrics`, `health`)
+
+ตอนนี้ยังไม่มี Kafka Connect ตัวไหนอ่าน topic นั้น ข้อมูลจึงไปไม่ถึง Kafka ทางนั้น
+คงไว้เพราะอาจารย์อาจสร้าง connector กลับมา และการส่ง MQTT ก็ไม่ได้เสียหายอะไร
 
 ### ดูข้อมูลที่เข้า Kafka แล้ว
 
@@ -226,8 +228,6 @@ curl -s "http://172.16.2.117:8080/api/clusters/IoT-Kafka-Cluster/topics/traffic-
   | python3 -c "import sys,json;[print(p['offsetMax']-p['offsetMin'],'ข้อความ') for p in json.load(sys.stdin)['partitions']]"
 ```
 
-**อย่าใช้ `kafka-console-consumer` ชี้ไป `172.16.2.117:9092`** มันจะเด้งไป `localhost:9092`
-ซึ่งคือ Kafka ในเครื่องเราเอง แล้วได้ข้อมูลผิดโดยไม่มี error เตือน ผมเคยพลาดตรงนี้มาแล้ว
 
 ## โครงสร้างข้อมูลใน InfluxDB
 
@@ -364,17 +364,24 @@ docker compose logs -f telegraf
 มองหาบรรทัดที่ขึ้นต้นด้วย `E!` โดยเฉพาะ unauthorized (token ผิด)
 หรือ connection refused (ต่อเซิร์ฟเวอร์อาจารย์ไม่ได้) ถ้าเงียบคือปกติ
 
-### จุดที่ 4 ดักฟังที่ Kafka
+### จุดที่ 4 ดักฟังที่ Kafka ของวิชา
 
 ดูว่า Telegraf ส่งอะไรเข้า Kafka บ้าง (สายที่ 2 จะมาอ่านตรงนี้)
+ต้องรันจากคอนเทนเนอร์เปล่า **ห้ามรันจากคอนเทนเนอร์ kafka ในเครื่องเรา**
 
 ```bash
-docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server localhost:9092 --topic traffic-events --from-beginning
+docker run --rm apache/kafka:latest /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server 172.16.2.117:9092 \
+  --topic traffic-events-6620301002 --from-beginning
 ```
 
 `--from-beginning` คืออ่านตั้งแต่ข้อความแรกสุดที่เคยเข้ามา ถ้าอยากดูเฉพาะของใหม่ให้ตัดออก
 กด Ctrl+C เพื่อออก
+
+**เหตุผลที่ต้องใช้คอนเทนเนอร์เปล่า** ถ้ารัน `docker compose exec kafka ...` แล้วชี้ไป
+`172.16.2.117:9092` broker จะตอบกลับมาว่าโหนดอยู่ที่ไหน ถ้าค่าที่ตอบมาคือ `localhost`
+client จะเด้งไปอ่าน Kafka ในเครื่องเราเองโดยไม่มี error เตือน แล้วเห็นข้อมูลผิดตัว
+เคยพลาดมาแล้วตอนตรวจสอบระบบ
 
 ### จุดที่ 5 ปลายทาง InfluxDB
 
