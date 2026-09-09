@@ -1,12 +1,9 @@
-from __future__ import annotations
-
 import argparse
 import collections
 import json
 import math
 import sys
 from datetime import datetime
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -17,14 +14,15 @@ from ultralytics import YOLO
 CAMERA_ID = "CAM_BUILDING2_FL02"
 STUDENT_ID = "6620301002"
 CLASS_NAMES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
-CONF_THR = {2: 0.30, 3: 0.30, 5: 0.30, 7: 0.30}
+CONF = 0.30  # ความมั่นใจขั้นต่ำ ส่งให้ YOLO กรองตั้งแต่ต้นทาง
 MAX_BOX_AREA_RATIO = 0.25  # กล่องเดียวไม่ควรเกิน 25% ของเฟรม CCTV
 TRACK_TTL_SEC = 0.25  # ลืม track เมื่อหายเกินนี้
 SPEED_EMA = 0.6  # น้ำหนักค่าเก่าใน EMA ลด jitter ของกล่อง
 IMGSZ, STRIDE, TRACKER = 960, 2, "bytetrack.yaml"
 SLOW_VLPS = 0.30  # ต่ำกว่านี้ถือว่าช้า (ความยาวรถ/วินาที)
 JAM_PERCENT, MIN_VEHICLES = 55.0, 4
-WINDOW_SEC, INTERVAL_SEC, REALTIME = 5.0, 10, True
+WINDOW_SEC, INTERVAL_SEC = 5.0, 10
+HYSTERESIS = 10.0  # ต้องต่ำกว่า JAM_PERCENT เท่านี้ถึงเลิกเตือน กันสถานะกระพริบ
 LEVELS = [(20, "FREE"), (35, "MODERATE"), (55, "HEAVY"), (101, "JAM")]
 LEVEL_COLORS = {
     "FREE": (0, 200, 0),
@@ -80,7 +78,7 @@ def pick_device():
 
 
 def load_roi_mask(path, width, height):
-  img = cv2.imread(str(path))
+  img = cv2.imread(path)
   if img is None:
     raise FileNotFoundError(f"เปิดไฟล์ ROI ไม่ได้: {path}")
   b, g, r = cv2.split(img.astype(np.int16))
@@ -108,12 +106,17 @@ def load_roi_mask(path, width, height):
 
 class CongestionMonitor:
 
-  def __init__(self, fps, sample_rate, hysteresis=10.0):
-    self.fps, self.hysteresis, self.alert_active = fps, hysteresis, False
+  def __init__(self, fps, sample_rate):
+    self.fps, self.alert_active = fps, False
     self.window = collections.deque(
         maxlen=max(1, int(WINDOW_SEC * sample_rate))
     )
     self.last_seen, self.speed_ema = {}, {}
+
+  def reset_tracks(self):
+    """ลืม track ทั้งหมด ใช้ตอนภาพกระโดด เช่นวนคลิปกลับไปต้นเรื่อง"""
+    self.last_seen.clear()
+    self.speed_ema.clear()
 
   def update_track(self, tid, frame_idx, cx, cy, box_h):
     prev = self.last_seen.get(tid)
@@ -158,11 +161,10 @@ class CongestionMonitor:
         else 0.0
     )
     enough = mean_n >= MIN_VEHICLES
-    code = level_code(pct / 100, mean_n)
-    level = "UNKNOWN" if code is None else LEVELS[code][1]
+    level = LEVELS[level_code(pct / 100, mean_n)][1]
     warm = len(self.window) >= self.window.maxlen // 2
     if self.alert_active:
-      self.alert_active = enough and pct >= JAM_PERCENT - self.hysteresis
+      self.alert_active = enough and pct >= JAM_PERCENT - HYSTERESIS
     elif warm and enough and pct >= JAM_PERCENT:
       self.alert_active = True
     return {
@@ -319,7 +321,7 @@ def main():
   roi_mask = roi_contours = None
   cx1, cy1, cx2, cy2 = 0, 0, width, height
   if args.roi and args.roi.lower() != "none":
-    roi_mask = load_roi_mask(Path(args.roi), width, height)
+    roi_mask = load_roi_mask(args.roi, width, height)
     roi_contours, _ = cv2.findContours(
         roi_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
@@ -371,8 +373,7 @@ def main():
         break
       # ล้าง track เดิมทิ้ง ไม่งั้นภาพที่กระโดดกลับต้นคลิปจะถูกคิดเป็น
       # รถวิ่งข้ามจอในเฟรมเดียว แล้วความเร็วจะพุ่งผิด
-      monitor.last_seen.clear()
-      monitor.speed_ema.clear()
+      monitor.reset_tracks()
       class_votes.clear()
       loops += 1
       print(f"วนคลิปรอบที่ {loops}", file=sys.stderr)
@@ -384,7 +385,7 @@ def main():
         tracker=TRACKER,
         imgsz=IMGSZ,
         classes=list(CLASS_NAMES),
-        conf=min(CONF_THR.values()),
+        conf=CONF,
         verbose=False,
         device=device,
     )
@@ -392,18 +393,16 @@ def main():
     frame_speeds = []
     roi_now = collections.Counter()
     if boxes is not None and boxes.id is not None:
-      for box, tid, cls_id, conf in zip(
+      for box, tid, cls_id in zip(
           boxes.xyxy.cpu().numpy(),
           boxes.id.int().cpu().numpy(),
           boxes.cls.int().cpu().numpy(),
-          boxes.conf.cpu().numpy(),
       ):
         x1, y1 = int(box[0]) + cx1, int(box[1]) + cy1
         x2, y2 = int(box[2]) + cx1, int(box[3]) + cy1
         vtype = CLASS_NAMES.get(int(cls_id))
         if (
             vtype is None
-            or conf < CONF_THR[int(cls_id)]
             or (x2 - x1) * (y2 - y1) > width * height * MAX_BOX_AREA_RATIO
         ):
           continue
@@ -468,13 +467,13 @@ def main():
     if show:
       draw_hud(frame, congestion, fps_live, roi_contours)
       cv2.imshow("Traffic Monitor", frame)
-      wait_ms = 1
-      if REALTIME:
-        behind = frame_idx / fps - (cv2.getTickCount() - start_tick) / freq
-        if behind < -1.0:
-          start_tick = cv2.getTickCount() - int(frame_idx / fps * freq)
-        else:
-          wait_ms = max(1, int(behind * 1000))
+      # หน่วงให้วิดีโอเล่นความเร็วปกติ ถ้าตามไม่ทันเกิน 1 วิ ก็รีเซ็ตฐานเวลาแทนการไล่ตาม
+      behind = frame_idx / fps - (cv2.getTickCount() - start_tick) / freq
+      if behind < -1.0:
+        start_tick = cv2.getTickCount() - int(frame_idx / fps * freq)
+        wait_ms = 1
+      else:
+        wait_ms = max(1, int(behind * 1000))
       key = cv2.waitKey(wait_ms) & 0xFF
       if key in (ord("q"), 27):
         break
