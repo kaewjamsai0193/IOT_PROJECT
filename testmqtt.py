@@ -289,6 +289,11 @@ def main():
       "--roi", default="mapreal.png", help="ภาพขอบเขตเส้นแดง (none = ทั้งเฟรม)"
   )
   ap.add_argument("--no-show", action="store_true", help="ไม่เปิดหน้าต่างแสดงผล")
+  ap.add_argument(
+      "--loop",
+      action="store_true",
+      help="เล่นไฟล์วิดีโอวนซ้ำเมื่อจบคลิป (ใช้กับกล้องสดไม่ได้)",
+  )
   args = ap.parse_args()
 
   for s in (sys.stdout, sys.stderr):
@@ -333,6 +338,7 @@ def main():
   class_votes = collections.defaultdict(collections.Counter)
   track_ttl = int(fps * TRACK_TTL_SEC)
   was_alerting = paused = False
+  loops = 0
   frame_idx, freq = 0, cv2.getTickFrequency()
   start_tick = last_emit = cv2.getTickCount()
 
@@ -352,7 +358,20 @@ def main():
         frame_idx += 1
     ret, frame = cap.read()
     if not ret:
-      break
+      if not args.loop or is_live:
+        break
+      cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+      ret, frame = cap.read()
+      if not ret:
+        print("ย้อนกลับต้นคลิปไม่สำเร็จ หยุดทำงาน", file=sys.stderr)
+        break
+      # ล้าง track เดิมทิ้ง ไม่งั้นภาพที่กระโดดกลับต้นคลิปจะถูกคิดเป็น
+      # รถวิ่งข้ามจอในเฟรมเดียว แล้วความเร็วจะพุ่งผิด
+      monitor.last_seen.clear()
+      monitor.speed_ema.clear()
+      class_votes.clear()
+      loops += 1
+      print(f"วนคลิปรอบที่ {loops}", file=sys.stderr)
     frame_idx += 1
 
     results = model.track(
