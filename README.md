@@ -1,19 +1,28 @@
 # IOT_PROJECT — ตรวจจับสภาพจราจรจากวิดีโอ
 
-ตรวจจับสภาพจราจรด้วย YOLO + ByteTrack แล้วส่งผลขึ้น MQTT
-จากนั้น Telegraf กระจายข้อมูลออกสองทาง คือเข้า InfluxDB เพื่อดูบน Grafana
-และเข้า Kafka เพื่อให้โมเดล ML ทำนายรถติดล่วงหน้า (ส่วนหลังยังไม่ได้ทำ)
+ตรวจจับสภาพจราจรด้วย YOLO + ByteTrack แล้วส่งผลขึ้น MQTT สองที่พร้อมกัน
+คือ broker ในเครื่อง (ให้ Telegraf เขียนต่อเข้า InfluxDB เพื่อดูบน Grafana)
+และ broker กลางของวิชา (ให้ Kafka Connect ดึงเข้า Kafka เพื่อทำ ML ต่อ)
 
 ```
-testmqtt.py (YOLO + ByteTrack)  ──── JSON ────▶  Mosquitto (:1883)
-                                                  topic: traffic/6620301002
-                                                        │
-                                                        ▼
-                                                   Telegraf
-                              ┌─────────────────────────┴─────────────────────────┐
-                              ▼                                                   ▼
-              InfluxDB 172.16.2.117:8086                            Kafka (:9092)
-              bucket: mini_project ──▶ Grafana                      topic: traffic-events
+                        testmqtt.py (YOLO + ByteTrack)
+                                    │
+                   ┌────────────────┴────────────────┐
+                   │ topic                           │ topic
+                   │ traffic/6620301002              │ iot/6620301002/traffic/<กล้อง>/events
+                   ▼                                 ▼
+        Mosquitto ในเครื่อง (:1883)        VerneMQ กลาง (172.16.2.117:1883)
+                   │                                 │
+                   ▼                                 ▼
+             Telegraf                        Kafka Connect (MqttSourceConnector)
+                   │                                 │
+        ┌──────────┴──────────┐                      ▼
+        ▼                     ▼            Kafka topic ของวิชา
+  InfluxDB กลาง         Kafka ในเครื่อง     traffic-events-6620301002
+  bucket mini_project   traffic-events              │
+        │                     │                     ▼
+        ▼                     ▼             [สายที่ 2 ML ทำนายรถติด]
+   Grafana กลาง        [ทดสอบในเครื่อง]
 ```
 
 ## ติดตั้ง
@@ -112,6 +121,80 @@ docker compose restart telegraf
 
 ถ้าต้องการข้อมูลที่ระยะห่างสม่ำเสมอไปเทรนโมเดล ให้รันแบบเปิดหน้าต่าง
 หรือใช้กล้องสด อย่าใช้ `--no-show` กับไฟล์วิดีโอ
+
+## เส้นทางเข้า Kafka ของวิชา
+
+**ไม่มีใครส่งเข้า Kafka ของอาจารย์ตรง ๆ ได้** broker ประกาศตัวเอง
+(`advertised.listeners`) ว่าอยู่ที่ `localhost:9092` และ `kafka:29092`
+ซึ่งเครื่องอื่นในเน็ตเวิร์กเข้าไม่ถึงทั้งคู่ ส่วนพอร์ต 29092 ก็ไม่ได้เปิดออกมา
+
+ระบบจึงออกแบบให้ส่งผ่าน MQTT แทน นักศึกษา publish ไปที่ VerneMQ กลาง
+แล้ว Kafka Connect ที่รันอยู่บนเครื่องเดียวกับ broker เป็นคนดึงเข้า Kafka ให้
+
+```
+เครื่องเรา ── MQTT publish ──▶ VerneMQ 172.16.2.117:1883
+                                        │
+                                        ▼
+                             Kafka Connect (MqttSourceConnector)
+                                        │
+                                        ▼
+                             Kafka topic: traffic-events-6620301002
+```
+
+**คอนเวนชันของ MQTT topic** คือ `iot/<รหัสนักศึกษา>/traffic/<camera_id>/<ชนิด>`
+โดยชนิดที่เห็นใช้กันมี `events`, `metrics`, `health` ของเราส่ง `events` อย่างเดียว
+
+### connector ของเรา
+
+สร้างไว้แล้วผ่าน REST API ที่ `http://172.16.2.117:8083` ชื่อ
+`mqtt-source-events-6620301002` ตั้งค่าเหมือนของเพื่อนทุกอย่างยกเว้นรหัสนักศึกษา
+
+เช็กสถานะ
+
+```bash
+curl -s http://172.16.2.117:8083/connectors/mqtt-source-events-6620301002/status
+```
+
+ต้องได้ `"state":"RUNNING"` ทั้งตัว connector และ task
+
+ถ้าต้องสร้างใหม่ (เช่นอาจารย์ล้างระบบ)
+
+```bash
+curl -X POST http://172.16.2.117:8083/connectors \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name": "mqtt-source-events-6620301002",
+  "config": {
+    "connector.class": "io.confluent.connect.mqtt.MqttSourceConnector",
+    "tasks.max": "1",
+    "mqtt.server.uri": "tcp://vernemq1:1883",
+    "mqtt.topics": "iot/6620301002/traffic/+/events",
+    "mqtt.qos": "1",
+    "mqtt.clean.session.enabled": "true",
+    "mqtt.client.id": "kafka-connect-traffic-events-6620301002",
+    "kafka.topic": "traffic-events-6620301002",
+    "confluent.topic.bootstrap.servers": "kafka:29092",
+    "confluent.topic.replication.factor": "1",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter"
+  }
+}'
+```
+
+### ดูข้อมูลที่เข้า Kafka แล้ว
+
+ใช้ Kafka UI ที่ http://172.16.2.117:8080 เลือกคลัสเตอร์ `IoT-Kafka-Cluster`
+แล้วเปิด topic `traffic-events-6620301002`
+
+หรือนับจำนวนข้อความจากบรรทัดคำสั่ง
+
+```bash
+curl -s "http://172.16.2.117:8080/api/clusters/IoT-Kafka-Cluster/topics/traffic-events-6620301002" \
+  | python3 -c "import sys,json;[print(p['offsetMax']-p['offsetMin'],'ข้อความ') for p in json.load(sys.stdin)['partitions']]"
+```
+
+**อย่าใช้ `kafka-console-consumer` ชี้ไป `172.16.2.117:9092`** มันจะเด้งไป `localhost:9092`
+ซึ่งคือ Kafka ในเครื่องเราเอง แล้วได้ข้อมูลผิดโดยไม่มี error เตือน ผมเคยพลาดตรงนี้มาแล้ว
 
 ## โครงสร้างข้อมูลใน InfluxDB
 

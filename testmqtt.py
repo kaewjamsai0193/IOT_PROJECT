@@ -34,20 +34,33 @@ LEVEL_COLORS = {
     "UNKNOWN": (160, 160, 160),
 }
 
-# --- ตั้งค่า MQTT Broker ---
-MQTT_BROKER = "127.0.0.1"  # เปลี่ยนเป็น IP ของ Broker ที่ใช้จริง
+# --- ตั้งค่า MQTT ---
 MQTT_PORT = 1883
-MQTT_TOPIC = "traffic/6620301002"  # เปลี่ยนเป็น topic ที่ต้องการส่งข้อมูล
-MQTT_CLIENT_ID = "traffic_pc_monitor_6620301002"
 
-# สร้างและเชื่อมต่อ MQTT Client
-mqtt_client = mqtt.Client(client_id=MQTT_CLIENT_ID)
-try:
-  mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
-  mqtt_client.loop_start()
-  print(f"เชื่อมต่อ MQTT Broker สำเร็จ: {MQTT_BROKER}", file=sys.stderr)
-except Exception as e:
-  print(f"เชื่อมต่อ MQTT Broker ไม่สำเร็จ: {e}", file=sys.stderr)
+# broker ในเครื่อง เลี้ยง Telegraf ที่เขียนต่อเข้า InfluxDB
+MQTT_BROKER = "127.0.0.1"
+MQTT_TOPIC = f"traffic/{STUDENT_ID}"
+MQTT_CLIENT_ID = f"traffic_pc_monitor_{STUDENT_ID}"
+
+# broker กลางของอาจารย์ Kafka Connect ดึงจาก topic นี้เข้า traffic-events-6620301002
+# รูปแบบ topic เป็นคอนเวนชันของวิชา iot/<รหัส>/traffic/<กล้อง>/<ชนิด>
+CENTRAL_BROKER = "172.16.2.117"
+CENTRAL_TOPIC = f"iot/{STUDENT_ID}/traffic/{CAMERA_ID}/events"
+
+
+def connect_mqtt(host, client_id):
+  client = mqtt.Client(client_id=client_id)
+  try:
+    client.connect(host, MQTT_PORT, keepalive=60)
+    client.loop_start()
+    print(f"เชื่อมต่อ MQTT สำเร็จ: {host}", file=sys.stderr)
+  except Exception as e:
+    print(f"เชื่อมต่อ MQTT ไม่สำเร็จ {host}: {e}", file=sys.stderr)
+  return client
+
+
+mqtt_client = connect_mqtt(MQTT_BROKER, MQTT_CLIENT_ID)
+central_client = connect_mqtt(CENTRAL_BROKER, f"{MQTT_CLIENT_ID}_central")
 
 
 def level_code(slow, n_vehicles):
@@ -214,10 +227,16 @@ def build_payload(s):
 def emit(p):
   payload_str = json.dumps(p, ensure_ascii=False)
   print(json.dumps(p, indent=2, ensure_ascii=False), flush=True)
-  try:
-    mqtt_client.publish(MQTT_TOPIC, payload_str, qos=0)
-  except Exception as e:
-    print(f"ส่ง MQTT ไม่สำเร็จ: {e}", file=sys.stderr)
+  # qos 1 ไป broker กลางเพราะเป็นข้อมูลที่ต้องส่งอาจารย์ ตกไม่ได้
+  # ในเครื่องใช้ qos 0 พอ ตกก็รออีก 10 วิ
+  for client, topic, qos in (
+      (mqtt_client, MQTT_TOPIC, 0),
+      (central_client, CENTRAL_TOPIC, 1),
+  ):
+    try:
+      client.publish(topic, payload_str, qos=qos)
+    except Exception as e:
+      print(f"ส่ง MQTT ไม่สำเร็จ {topic}: {e}", file=sys.stderr)
 
 
 def draw_hud(frame, cg, fps_live, roi_contours):
@@ -442,8 +461,9 @@ def main():
   emit(build_payload(interval.snapshot()))
 
   # ปิดการเชื่อมต่อ MQTT และทำความสะอาดหน้าต่าง
-  mqtt_client.loop_stop()
-  mqtt_client.disconnect()
+  for client in (mqtt_client, central_client):
+    client.loop_stop()
+    client.disconnect()
   cap.release()
   cv2.destroyAllWindows()
 
