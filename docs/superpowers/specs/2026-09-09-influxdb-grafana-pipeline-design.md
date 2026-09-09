@@ -69,11 +69,32 @@ token ถูกจำกัดสิทธิ์ให้เห็นเฉพ�
 | รายการ | ค่า |
 |---|---|
 | measurement | `traffic` |
-| tags | `camera_id`, `student_id` |
+| tags | `camera_id`, `student_id`, `topic` |
 | fields | `car`, `motorcycle`, `bus`, `truck`, `vehicles_in_roi`, `slow_vehicle_ratio`, `congestion_level` |
 | time | จากฟิลด์ `timestamp` ใน payload |
 
 ความหมายของ `congestion_level` คือ 0 = FREE, 1 = MODERATE, 2 = HEAVY, 3 = JAM
+
+`topic` เป็น tag ที่ `mqtt_consumer` ติดมาให้เองโดยไม่ต้องตั้งค่า มีค่าคงที่
+`traffic/6620301002` จึงไม่มีผลเสีย ปล่อยไว้ตามนั้น
+
+### tag `host` ต้องปิด
+
+เพิ่มหลังจากทดสอบจริงเมื่อ 2026-09-09 ตอนเขียน spec ครั้งแรกยังไม่รู้เรื่องนี้
+
+Telegraf ติด tag `host` มาให้ทุกจุดข้อมูลโดยอัตโนมัติ ซึ่งเมื่อรันใน container
+ค่านี้คือ container ID เช่น `d2cc4f37e245` และ **เปลี่ยนทุกครั้งที่สร้าง container ใหม่**
+
+InfluxDB ระบุ series ด้วยชุด tag ทั้งหมด พอ `host` เปลี่ยน ข้อมูลชุดใหม่จึงกลายเป็น
+คนละ series กับชุดเก่า ผลคือกราฟใน Grafana ขาดเป็นท่อนและแสดงเป็นหลายเส้น
+ส่วนโมเดล ML จะเห็นข้อมูลแตกเป็นหลายก้อนแทนที่จะเป็นอนุกรมเวลาเดียวต่อเนื่อง
+
+แก้ด้วย `omit_hostname = true` ในส่วน `[agent]` ของ `telegraf.conf`
+
+ข้อมูลทดสอบชุดแรกที่เขียนไปก่อนแก้ (ราว 07:41-07:42 UTC ของวันที่ 2026-09-09)
+ยังมี tag `host` ติดอยู่และแยกเป็นคนละ series ปริมาณราวหนึ่งนาที
+ไม่ได้ลบทิ้งเพราะเป็น bucket ของอาจารย์ที่ใช้ร่วมกันทั้งห้อง
+การลบข้อมูลในนั้นควรถามเจ้าของก่อน
 
 ### เรื่อง type ของ field
 
