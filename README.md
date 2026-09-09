@@ -185,27 +185,31 @@ curl -s "http://172.16.2.117:8080/api/clusters/IoT-Kafka-Cluster/brokers/1/confi
 
 ### รูปแบบข้อความใน Kafka
 
-Telegraf ห่อข้อมูลเป็นรูปแบบของตัวเอง ไม่ใช่ payload ดิบแบบที่ส่งขึ้น MQTT
+เหมือนกับ payload ที่ส่งขึ้น MQTT ทุกฟิลด์
 
 ```json
 {
-  "fields": {"bus": 0, "car": 6, "congestion_level": 0, "motorcycle": 0,
-             "slow_vehicle_ratio": 0.02, "truck": 0, "vehicles_in_roi": 6},
-  "name": "traffic_6620301002",
-  "tags": {"camera_id": "CAM_BUILDING2_FL02", "student_id": "6620301002",
-           "topic": "traffic/6620301002"},
-  "timestamp": 1788947816
+  "timestamp": "2026-09-09T10:03:25Z",
+  "camera_id": "CAM_BUILDING2_FL02",
+  "student_id": "6620301002",
+  "car": 6,
+  "motorcycle": 0,
+  "bus": 0,
+  "truck": 0,
+  "vehicles_in_roi": 6,
+  "slow_vehicle_ratio": 0,
+  "congestion_level": 0
 }
 ```
 
-ต่างจาก payload ดิบตรงที่ค่าถูกแยกเป็น `fields` กับ `tags` และ `timestamp`
-เป็นตัวเลข Unix ไม่ใช่สตริง ISO ตัวอ่านในสายที่ 2 ต้องแกะตามรูปแบบนี้
+ต่างจาก payload ดิบแค่เรื่องเดียวคือ **เวลาเขียนเป็น UTC ลงท้ายด้วย `Z`**
+ส่วน MQTT ส่งเป็นเวลาไทยลงท้ายด้วย `+07:00` ทั้งสองแบบคือวินาทีเดียวกัน
+เช่น `2026-09-09T10:03:25Z` เท่ากับ `2026-09-09T17:03:25+07:00`
 
-อยากได้เวลาเป็น ISO เหมือนเดิมให้เติมใน `[[outputs.kafka]]`
-
-```toml
-json_timestamp_format = "2006-01-02T15:04:05Z07:00"
-```
+โดยค่าเริ่มต้น Telegraf จะห่อข้อมูลเป็น `{"fields":{…},"tags":{…},"name":…}`
+ซึ่งคนละรูปแบบกับที่ส่งขึ้น MQTT ทำให้ผู้อ่านปลายทางต้องเขียนโค้ดแกะสองแบบ
+จึงใช้ `json_transformation` ใน `telegraf.conf` แปลงกลับให้แบนราบเหมือนกัน
+ดูสูตรได้ในบล็อก `[[outputs.kafka]]` ของไฟล์นั้น
 
 ### MQTT ไป VerneMQ กลางยังส่งอยู่
 
