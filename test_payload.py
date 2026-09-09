@@ -26,4 +26,12 @@ assert q["camera_id"] == "CAM_BUILDING2_FL02"
 assert q["vehicles_in_roi"] == 12
 assert None not in q.values(), "ห้ามมีค่า null ใน payload"
 
+# main() ใช้ n_frames เป็นเงื่อนไขกันไม่ให้ส่ง payload ว่างตอนปิดโปรแกรม
+# ถ้าตัวนับนี้เปลี่ยนพฤติกรรม การ์ดตัวนั้นจะพังเงียบ ๆ แล้วข้อมูลศูนย์จะปนเข้าฐานข้อมูล
+iv = t.IntervalStats()
+assert iv.n_frames == 0, "IntervalStats ที่ยังไม่ได้ใช้ต้องมี n_frames เป็น 0"
+assert t.build_payload(iv.snapshot())["vehicles_in_roi"] == 0
+iv.commit_frame({"car": 2}, [0.5])
+assert iv.n_frames == 1, "commit_frame ต้องนับเฟรมเพิ่ม"
+
 print("ผ่านทั้งหมด")

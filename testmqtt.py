@@ -480,8 +480,11 @@ def main():
         break
       paused = key == ord(" ")
 
-  print("=== FINAL ===", file=sys.stderr)
-  emit(build_payload(interval.snapshot()))
+  # ถ้าเพิ่งส่งรอบล่าสุดไปแล้ว ตัวนับจะถูกรีเซ็ตเป็นศูนย์ ส่งซ้ำตอนนี้จะได้
+  # payload ที่รถเป็น 0 ทุกประเภทและ level 0 ปนเข้าฐานข้อมูลทุกครั้งที่ปิดโปรแกรม
+  if interval.n_frames:
+    print("=== FINAL ===", file=sys.stderr)
+    emit(build_payload(interval.snapshot()))
 
   # ปิดการเชื่อมต่อ MQTT และทำความสะอาดหน้าต่าง
   for client in (mqtt_client, central_client):
