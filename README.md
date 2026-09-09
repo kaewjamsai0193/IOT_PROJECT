@@ -118,7 +118,7 @@ docker compose restart telegraf
 | รายการ | ค่า |
 |---|---|
 | bucket | `mini_project` (ใช้ร่วมกันทั้งห้อง) |
-| measurement | `traffic` |
+| measurement | `traffic_6620301002` |
 | tags | `camera_id`, `student_id`, `topic` |
 | fields | `car`, `motorcycle`, `bus`, `truck`, `vehicles_in_roi`, `slow_vehicle_ratio`, `congestion_level` |
 
@@ -141,7 +141,7 @@ bucket นี้ใช้ร่วมกันทั้งห้อง **ทุ�
 ```flux
 from(bucket: "mini_project")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r._measurement == "traffic")
+  |> filter(fn: (r) => r._measurement == "traffic_6620301002")
   |> filter(fn: (r) => r.student_id == "6620301002")
   |> filter(fn: (r) => r._field == "congestion_level")
   |> last()
@@ -158,7 +158,7 @@ from(bucket: "mini_project")
 ```flux
 from(bucket: "mini_project")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r._measurement == "traffic")
+  |> filter(fn: (r) => r._measurement == "traffic_6620301002")
   |> filter(fn: (r) => r.student_id == "6620301002")
   |> filter(fn: (r) => contains(value: r._field, set: ["car", "motorcycle", "bus", "truck"]))
   |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
@@ -171,7 +171,7 @@ from(bucket: "mini_project")
 ```flux
 from(bucket: "mini_project")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r._measurement == "traffic")
+  |> filter(fn: (r) => r._measurement == "traffic_6620301002")
   |> filter(fn: (r) => r.student_id == "6620301002")
   |> filter(fn: (r) => r._field == "congestion_level")
   |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)
@@ -189,7 +189,7 @@ curl -s -XPOST "http://172.16.2.117:8086/api/v2/query?org=my-org" \
   -H "Accept: application/csv" \
   -d 'from(bucket:"mini_project")
       |> range(start: -30m)
-      |> filter(fn: (r) => r._measurement == "traffic" and r.student_id == "6620301002")
+      |> filter(fn: (r) => r._measurement == "traffic_6620301002" and r.student_id == "6620301002")
       |> last()'
 ```
 

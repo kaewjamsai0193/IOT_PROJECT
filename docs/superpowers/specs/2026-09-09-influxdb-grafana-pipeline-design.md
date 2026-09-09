@@ -68,7 +68,7 @@ token ถูกจำกัดสิทธิ์ให้เห็นเฉพ�
 
 | รายการ | ค่า |
 |---|---|
-| measurement | `traffic` |
+| measurement | `traffic_6620301002` |
 | tags | `camera_id`, `student_id`, `topic` |
 | fields | `car`, `motorcycle`, `bus`, `truck`, `vehicles_in_roi`, `slow_vehicle_ratio`, `congestion_level` |
 | time | จากฟิลด์ `timestamp` ใน payload |
@@ -77,6 +77,22 @@ token ถูกจำกัดสิทธิ์ให้เห็นเฉพ�
 
 `topic` เป็น tag ที่ `mqtt_consumer` ติดมาให้เองโดยไม่ต้องตั้งค่า มีค่าคงที่
 `traffic/6620301002` จึงไม่มีผลเสีย ปล่อยไว้ตามนั้น
+
+### ทำไมชื่อ measurement ต้องต่อท้ายด้วยรหัสนักศึกษา
+
+แก้เมื่อ 2026-09-09 หลังจากไปดูของจริงใน bucket กลาง เดิม spec กำหนดชื่อว่า `traffic` เฉย ๆ
+
+พอไล่ดู measurement ทั้งหมดใน `mini_project` พบว่าทั้งห้องใช้คอนเวนชัน
+ต่อท้ายชื่อด้วยรหัสนักศึกษา เช่น `traffic_6610301001`, `traffic_6610301003`,
+`traffic_zone_6610301006`, `helmet_violation_6510301001`
+
+การใช้ชื่อ `traffic` โล่ง ๆ มีปัญหาสองอย่าง หนึ่งคือหายากใน UI เพราะคนอื่น
+กวาดตาหารหัสนักศึกษาแล้วไม่เจอ สองคือเป็นชื่อสาธารณะที่เพื่อนคนอื่นเผลอเขียนเข้ามาได้
+ต่างจากชื่อที่มีรหัสนักศึกษาซึ่งกันไว้โดยธรรมชาติ
+
+ข้อมูลที่เขียนไปก่อนเปลี่ยนชื่อ (ราว 07:41-08:00 UTC ของวันที่ 2026-09-09)
+ยังค้างอยู่ใต้ measurement `traffic` ไม่ย้ายตามมา เป็นข้อมูลทดสอบราว 20 นาที
+ปล่อยไว้ได้ ไม่ลบเพราะเป็น bucket ของอาจารย์
 
 ### tag `host` ต้องปิด
 
@@ -156,7 +172,7 @@ payload ส่ง timestamp เป็น ISO 8601 ที่ความละเ
 
 ใน `[[inputs.mqtt_consumer]]` เพิ่ม
 
-- `name_override = "traffic"` — ไม่งั้น measurement จะชื่อ `mqtt_consumer` ตาม default
+- `name_override = "traffic_6620301002"` — ไม่งั้น measurement จะชื่อ `mqtt_consumer` ตาม default
 - `tag_keys = ["camera_id", "student_id"]` — parser `json` ทิ้งค่า string ทุกตัวที่ไม่ระบุไว้
   ปัจจุบัน `camera_id` จึงหายไปทั้งหมด
 - `json_time_key = "timestamp"` และ `json_time_format = "RFC3339"`
