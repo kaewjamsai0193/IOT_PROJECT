@@ -234,7 +234,11 @@ def emit(p):
       (central_client, CENTRAL_TOPIC, 1),
   ):
     try:
-      client.publish(topic, payload_str, qos=qos)
+      # publish ไม่โยน exception ตอนต่อ broker ไม่ได้ แต่คืน rc=4 เงียบ ๆ
+      # ถ้าไม่เช็ก rc ข้อมูลจะหายโดยไม่มีคำเตือนเวลาอยู่นอกเน็ตเวิร์กมหาลัย
+      info = client.publish(topic, payload_str, qos=qos)
+      if info.rc != mqtt.MQTT_ERR_SUCCESS:
+        print(f"ส่ง MQTT ไม่สำเร็จ {topic} (rc={info.rc})", file=sys.stderr)
     except Exception as e:
       print(f"ส่ง MQTT ไม่สำเร็จ {topic}: {e}", file=sys.stderr)
 
