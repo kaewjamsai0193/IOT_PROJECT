@@ -5,15 +5,11 @@
 และเข้า Kafka ของวิชาโดยตรงเพื่อทำ ML ต่อ
 
 ```
-                 testmqtt.py (YOLO + ByteTrack)
-                             │
-            ┌────────────────┴────────────────┐
-            │ topic                           │ topic
-            │ traffic/6620301002              │ iot/6620301002/traffic/<กล้อง>/events
-            ▼                                 ▼
- Mosquitto ในเครื่อง (:1883)        VerneMQ กลาง (172.16.2.117:1883)
-            │                                 │
-            ▼                            (ยังไม่มีใครอ่าน)
+      testmqtt.py (YOLO + ByteTrack)
+            │ topic traffic/6620301002
+            ▼
+ Mosquitto ในเครื่อง (:1883)
+            │
       Telegraf
             │
    ┌────────┴─────────────────────┐
@@ -25,8 +21,8 @@ bucket mini_project        topic traffic-events-6620301002
 Grafana กลาง            [สายที่ 2 ML ทำนายรถติด]
 ```
 
-การส่ง MQTT ไป VerneMQ กลางยังคงไว้อยู่ แต่ตอนนี้ไม่มี Kafka Connect
-ตัวไหนอ่าน topic นั้นแล้ว ดูหัวข้อ [เส้นทางเข้า Kafka ของวิชา](#เส้นทางเข้า-kafka-ของวิชา)
+เคยส่ง MQTT ขึ้น VerneMQ กลางอีกทางหนึ่งด้วย ตอนนี้เลิกแล้ว
+ดูหัวข้อ [เส้นทางเข้า Kafka ของวิชา](#เส้นทางเข้า-kafka-ของวิชา)
 
 ## ติดตั้ง
 
@@ -48,7 +44,7 @@ cp .env.example .env
 ## ใช้งาน
 
 ```bash
-docker compose up -d          # Mosquitto, Kafka, Telegraf
+docker compose up -d          # Mosquitto, Telegraf
 python testmqtt.py test.mov   # q หรือ ESC = ออก, space = หยุดชั่วคราว
 ```
 
@@ -181,7 +177,7 @@ curl -s "http://172.16.2.117:8080/api/clusters/IoT-Kafka-Cluster/brokers/1/confi
 ```
 
 ถ้าวันไหนกลับไปเป็น `localhost:9092` อีก จะส่งตรงไม่ได้ทันที
-ต้องกลับไปใช้เส้นทาง MQTT แล้วสร้าง connector ใหม่
+ต้องกลับไปเปิดการส่ง MQTT ขึ้น VerneMQ กลาง แล้วให้อาจารย์สร้าง connector ใหม่
 
 ### รูปแบบข้อความใน Kafka
 
@@ -211,14 +207,15 @@ curl -s "http://172.16.2.117:8080/api/clusters/IoT-Kafka-Cluster/brokers/1/confi
 จึงใช้ `json_transformation` ใน `telegraf.conf` แปลงกลับให้แบนราบเหมือนกัน
 ดูสูตรได้ในบล็อก `[[outputs.kafka]]` ของไฟล์นั้น
 
-### MQTT ไป VerneMQ กลางยังส่งอยู่
+### เลิกส่ง MQTT ไป VerneMQ กลางแล้ว
 
-`testmqtt.py` ยังส่งขึ้น VerneMQ ที่ `172.16.2.117:1883` topic
+`testmqtt.py` เคยส่งขึ้น VerneMQ ที่ `172.16.2.117:1883` topic
 `iot/6620301002/traffic/<camera_id>/events` ตามคอนเวนชันของวิชา
 (ชนิดที่เห็นใช้กันมี `events`, `metrics`, `health`)
 
-ตอนนี้ยังไม่มี Kafka Connect ตัวไหนอ่าน topic นั้น ข้อมูลจึงไปไม่ถึง Kafka ทางนั้น
-คงไว้เพราะอาจารย์อาจสร้าง connector กลับมา และการส่ง MQTT ก็ไม่ได้เสียหายอะไร
+ตัดออกแล้วเพราะไม่มี Kafka Connect ตัวไหนอ่าน topic นั้น ข้อมูลไปตายเปล่า
+และยังต้องรอ connect broker นอกเน็ตมหาลัยทุกครั้งที่สตาร์ทโปรแกรม
+ถ้าต้องเปิดกลับ ดู commit ที่ตัดออกไป มีแค่ client ตัวที่สองกับ publish อีกหนึ่งครั้ง
 
 ### ดูข้อมูลที่เข้า Kafka แล้ว
 
@@ -371,7 +368,7 @@ docker compose logs -f telegraf
 ### จุดที่ 4 ดักฟังที่ Kafka ของวิชา
 
 ดูว่า Telegraf ส่งอะไรเข้า Kafka บ้าง (สายที่ 2 จะมาอ่านตรงนี้)
-ต้องรันจากคอนเทนเนอร์เปล่า **ห้ามรันจากคอนเทนเนอร์ kafka ในเครื่องเรา**
+ในเครื่องเราไม่มี Kafka แล้ว จึงยืมคอนเทนเนอร์เปล่ามารัน consumer ชั่วคราว
 
 ```bash
 docker run --rm apache/kafka:latest /opt/kafka/bin/kafka-console-consumer.sh \
@@ -382,10 +379,10 @@ docker run --rm apache/kafka:latest /opt/kafka/bin/kafka-console-consumer.sh \
 `--from-beginning` คืออ่านตั้งแต่ข้อความแรกสุดที่เคยเข้ามา ถ้าอยากดูเฉพาะของใหม่ให้ตัดออก
 กด Ctrl+C เพื่อออก
 
-**เหตุผลที่ต้องใช้คอนเทนเนอร์เปล่า** ถ้ารัน `docker compose exec kafka ...` แล้วชี้ไป
-`172.16.2.117:9092` broker จะตอบกลับมาว่าโหนดอยู่ที่ไหน ถ้าค่าที่ตอบมาคือ `localhost`
-client จะเด้งไปอ่าน Kafka ในเครื่องเราเองโดยไม่มี error เตือน แล้วเห็นข้อมูลผิดตัว
-เคยพลาดมาแล้วตอนตรวจสอบระบบ
+**อย่ารัน Kafka ในเครื่องคู่ขนานไว้** เคยพลาดมาแล้วตอนตรวจสอบระบบ ถ้า broker
+ของอาจารย์ตอบกลับมาว่าโหนดอยู่ที่ `localhost` client จะเด้งไปอ่าน Kafka ในเครื่อง
+โดยไม่มี error เตือน แล้วเห็นข้อมูลผิดตัว ตอนนี้จึงเอา service `kafka` ออกจาก
+`docker-compose.yml` แล้ว
 
 ### จุดที่ 5 ปลายทาง InfluxDB
 
@@ -423,7 +420,7 @@ python3 test_payload.py
 | `testmqtt.py` | ตรวจจับ ติดตาม ตัดสินสภาพจราจร แล้วส่ง payload ขึ้น MQTT |
 | `test_payload.py` | ตรวจว่า payload ถูกต้อง |
 | `mapreal.png` | ภาพ ROI ที่วาดขอบเขตถนนด้วยเส้นสีแดง |
-| `docker-compose.yml` | Mosquitto, Kafka, Telegraf |
+| `docker-compose.yml` | Mosquitto, Telegraf |
 | `telegraf.conf` | อ่าน MQTT แล้วกระจายเข้า InfluxDB และ Kafka |
 | `mosquitto.conf` | config ของ MQTT broker |
 | `.env` | token ของ InfluxDB (ไม่ขึ้น git) |
