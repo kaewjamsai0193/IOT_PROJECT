@@ -14,8 +14,8 @@
 
 | ท่อน | จาก → ไป | ที่อยู่ / ชื่อ | ขนอะไร | ตั้งค่าที่ไหน |
 |---|---|---|---|---|
-| 1 | วิดีโอ/กล้อง → `testmqtt.py` | อาร์กิวเมนต์ตัวแรก | เฟรมภาพดิบ | บรรทัดคำสั่ง |
-| 2 | `testmqtt.py` → Mosquitto | `127.0.0.1:1883` topic `traffic/6620301002` | payload JSON, qos 1 | ค่าคงที่ต้นไฟล์ `testmqtt.py` |
+| 1 | วิดีโอ/กล้อง → `main.py` | อาร์กิวเมนต์ตัวแรก | เฟรมภาพดิบ | บรรทัดคำสั่ง |
+| 2 | `main.py` → Mosquitto | `127.0.0.1:1883` topic `traffic/6620301002` | payload JSON, qos 1 | ค่าคงที่ต้นไฟล์ `main.py` |
 | 3 | Mosquitto → Telegraf | `mosquitto:1883` (ชื่อ service ใน docker) | payload เดิม | `[[inputs.mqtt_consumer]]` |
 | 4 | Telegraf → InfluxDB | `:8086` → measurement `traffic_6620301002` | 7 fields + tag `camera_id`, `student_id`, `topic` | `[[outputs.influxdb_v2]]` + `INFLUX_TOKEN` |
 | 5 | Telegraf → Kafka | `:9092` topic `traffic-events-6620301002` | payload แบนราบเหมือน MQTT (เวลาเป็น UTC) | `[[outputs.kafka]]` |
@@ -41,12 +41,12 @@ cp .env.example .env          # แล้วใส่ INFLUX_TOKEN ที่อ�
 
 ```bash
 docker compose up -d                       # Mosquitto, Telegraf
-.venv/bin/python testmqtt.py longvideo.mov # q หรือ ESC = ออก, space = หยุดชั่วคราว
+.venv/bin/python main.py longvideo.mov # q หรือ ESC = ออก, space = หยุดชั่วคราว
 .venv/bin/python predict_consumer.py       # สาย ML เปิดค้างไว้อีกเทอร์มินัล
 ```
 
-รับภาพจากกล้องจริงใช้ `testmqtt.py 0` หรือ `testmqtt.py rtsp://…`
-อาร์กิวเมนต์ที่เหลือดูได้จาก `testmqtt.py --help`
+รับภาพจากกล้องจริงใช้ `main.py 0` หรือ `main.py rtsp://…`
+อาร์กิวเมนต์ที่เหลือดูได้จาก `main.py --help`
 
 ## ข้อมูลที่ส่ง
 
@@ -80,11 +80,10 @@ bucket `mini_project` ใช้ร่วมกันทั้งห้อง **�
 
 | ไฟล์ | หน้าที่ |
 |---|---|
-| `testmqtt.py` | ตรวจจับ ติดตาม ตัดสินสภาพจราจร แล้วส่ง payload ขึ้น MQTT |
+| `main.py` | ตรวจจับ ติดตาม ตัดสินสภาพจราจร แล้วส่ง payload ขึ้น MQTT |
 | `ml_features.py` | สูตร feature ตัวเดียวกันที่ทั้ง train และ realtime เรียกใช้ |
 | `train_model.py` | อ่านประวัติจาก InfluxDB แล้วสร้าง `model.joblib` |
 | `predict_consumer.py` | อ่าน Kafka ทำนาย และเขียนผลกลับ InfluxDB |
-| `test_payload.py`, `test_ml_features.py` | สคริปต์ assert ธรรมดา ไม่ต้องลง pytest |
 | `docker-compose.yml`, `mosquitto.conf`, `telegraf.conf` | Mosquitto กับ Telegraf ในเครื่อง |
 | `mapreal.png` | ภาพ ROI ที่วาดขอบเขตถนนด้วยเส้นสีแดง |
 | `.env` | token ของ InfluxDB และค่าตั้งของสาย ML (ไม่ขึ้น git) |
