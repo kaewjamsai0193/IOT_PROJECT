@@ -276,7 +276,7 @@ def main():
   ap.add_argument(
       "video",
       nargs="?",
-      default="test.mov",
+      default="longvideo.mov",
       help="ไฟล์วิดีโอ, RTSP URL, หรือเลขกล้อง (0 = webcam)",
   )
   ap.add_argument("--model", default="yolo26s.pt")

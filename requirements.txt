@@ -1,0 +1,6 @@
+-r requirements-ml.txt
+
+opencv-python>=4.10,<6
+paho-mqtt>=2,<3
+torch>=2.2,<3
+ultralytics>=8.3,<9
