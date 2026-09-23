@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#080b10"/>
+    </linearGradient>
+    <linearGradient id="greenFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#73bf69" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#73bf69" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="orangeFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb357" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#ffb357" stop-opacity="0.01"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="9" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+    <style>
+      .text { font-family: Inter, "Noto Sans Thai", -apple-system, BlinkMacSystemFont, sans-serif; }
+      .panel { fill: #151a21; stroke: #2b333e; stroke-width: 1.5; }
+      .title { fill: #e6edf3; font-size: 18px; font-weight: 650; }
+      .muted { fill: #8b949e; font-size: 14px; }
+      .grid { stroke: #252c35; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="980" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1600" height="72" fill="#11161d" stroke="#252c35"/>
+  <circle cx="38" cy="36" r="16" fill="#73bf69"/>
+  <path d="M30 39h5l3-10 4 15 4-10h6" fill="none" stroke="#08100a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text class="text" x="70" y="32" fill="#f0f4f8" font-size="21" font-weight="700">ระบบติดตามและพยากรณ์การจราจร</text>
+  <text class="text muted" x="70" y="54">CAM_BUILDING2_FL02 · อัปเดตทุก 30 วินาที</text>
+  <rect x="1180" y="18" width="154" height="38" rx="8" fill="#1b222c" stroke="#343d49"/>
+  <text class="text" x="1204" y="43" fill="#c9d1d9" font-size="15">Last 30 minutes</text>
+  <rect x="1348" y="18" width="110" height="38" rx="8" fill="#1b222c" stroke="#343d49"/>
+  <text class="text" x="1372" y="43" fill="#c9d1d9" font-size="15">Refresh 30s</text>
+  <rect x="1472" y="18" width="98" height="38" rx="8" fill="#3874d8"/>
+  <text class="text" x="1503" y="43" fill="#fff" font-size="15" font-weight="650">Save</text>
+
+  <!-- Top stat cards -->
+  <g filter="url(#shadow)">
+    <rect class="panel" x="28" y="94" width="374" height="184" rx="12"/>
+    <rect class="panel" x="418" y="94" width="374" height="184" rx="12"/>
+    <rect class="panel" x="808" y="94" width="374" height="184" rx="12"/>
+    <rect class="panel" x="1198" y="94" width="374" height="184" rx="12"/>
+  </g>
+
+  <text class="text title" x="54" y="128">สภาพการจราจรปัจจุบัน</text>
+  <circle cx="61" cy="163" r="6" fill="#73bf69"/>
+  <text class="text" x="78" y="168" fill="#73bf69" font-size="14" font-weight="650">LIVE</text>
+  <text class="text" x="52" y="225" fill="#73bf69" font-size="54" font-weight="750">รถโล่ง</text>
+  <text class="text muted" x="54" y="254">ระดับ 0 · FREE</text>
+
+  <text class="text title" x="444" y="128">พยากรณ์ในอีก 5 นาที</text>
+  <rect x="444" y="148" width="92" height="27" rx="13" fill="#2b2419" stroke="#6e5129"/>
+  <text class="text" x="463" y="167" fill="#ffb357" font-size="13" font-weight="650">FORECAST</text>
+  <text class="text" x="442" y="225" fill="#ffb357" font-size="54" font-weight="750">รถโล่ง</text>
+  <text class="text muted" x="444" y="254">ค่าพยากรณ์ 0.24 · สำหรับ 14:45</text>
+
+  <text class="text title" x="834" y="128">จำนวนรถปัจจุบัน</text>
+  <text class="text" x="834" y="224" fill="#f0f4f8" font-size="72" font-weight="720">9</text>
+  <text class="text muted" x="897" y="221">คันในพื้นที่ ROI</text>
+  <path d="M834 249 C865 243,888 251,916 235 S967 226,993 241 S1044 251,1072 235 S1125 235,1154 229" fill="none" stroke="#73bf69" stroke-width="3"/>
+
+  <text class="text title" x="1224" y="128">สัดส่วนรถเคลื่อนที่ช้า</text>
+  <text class="text" x="1224" y="224" fill="#f0f4f8" font-size="72" font-weight="720">0</text>
+  <text class="text" x="1280" y="221" fill="#8b949e" font-size="28">%</text>
+  <rect x="1224" y="246" width="320" height="8" rx="4" fill="#252c35"/>
+  <rect x="1224" y="246" width="8" height="8" rx="4" fill="#73bf69"/>
+
+  <!-- Middle chart -->
+  <rect class="panel" x="28" y="296" width="1016" height="342" rx="12" filter="url(#shadow)"/>
+  <text class="text title" x="54" y="332">ค่าจริงเทียบค่าพยากรณ์ล่วงหน้า 5 นาที</text>
+  <circle cx="770" cy="326" r="5" fill="#73bf69"/>
+  <text class="text muted" x="783" y="331">ค่าจริง</text>
+  <line x1="861" y1="326" x2="884" y2="326" stroke="#ffb357" stroke-width="3" stroke-dasharray="7 5"/>
+  <text class="text muted" x="895" y="331">Forecast</text>
+
+  <line class="grid" x1="86" y1="375" x2="1014" y2="375"/>
+  <line class="grid" x1="86" y1="443" x2="1014" y2="443"/>
+  <line class="grid" x1="86" y1="511" x2="1014" y2="511"/>
+  <line class="grid" x1="86" y1="579" x2="1014" y2="579"/>
+  <text class="text muted" x="61" y="380">3</text>
+  <text class="text muted" x="61" y="448">2</text>
+  <text class="text muted" x="61" y="516">1</text>
+  <text class="text muted" x="61" y="584">0</text>
+  <text class="text muted" x="86" y="614">14:10</text>
+  <text class="text muted" x="386" y="614">14:20</text>
+  <text class="text muted" x="686" y="614">14:30</text>
+  <text class="text muted" x="953" y="614">14:40</text>
+
+  <path d="M86 579 L145 579 L204 511 L263 579 L322 443 L381 443 L440 511 L499 511 L558 579 L617 511 L676 511 L735 443 L794 511 L853 579 L912 579 L971 511 L1014 511 L1014 579 L86 579 Z" fill="url(#greenFill)"/>
+  <polyline points="86,579 145,579 204,511 263,579 322,443 381,443 440,511 499,511 558,579 617,511 676,511 735,443 794,511 853,579 912,579 971,511 1014,511" fill="none" stroke="#73bf69" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline points="86,565 145,558 204,530 263,540 322,472 381,461 440,488 499,522 558,548 617,526 676,493 735,468 794,487 853,537 912,551 971,525 1014,500" fill="none" stroke="#ffb357" stroke-width="4" stroke-dasharray="10 7" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- State timeline -->
+  <rect class="panel" x="1060" y="296" width="512" height="342" rx="12" filter="url(#shadow)"/>
+  <text class="text title" x="1086" y="332">ไทม์ไลน์สถานะ</text>
+  <text class="text muted" x="1086" y="357">ระดับการจราจรย้อนหลัง 30 นาที</text>
+  <text class="text" x="1086" y="411" fill="#8b949e" font-size="13">ค่าจริง</text>
+  <rect x="1152" y="389" width="100" height="31" rx="5" fill="#3f7140"/>
+  <rect x="1256" y="389" width="56" height="31" rx="5" fill="#9b7d24"/>
+  <rect x="1316" y="389" width="78" height="31" rx="5" fill="#3f7140"/>
+  <rect x="1398" y="389" width="54" height="31" rx="5" fill="#b6632b"/>
+  <rect x="1456" y="389" width="84" height="31" rx="5" fill="#3f7140"/>
+  <text class="text" x="1086" y="467" fill="#8b949e" font-size="13">Forecast</text>
+  <rect x="1152" y="445" width="143" height="31" rx="5" fill="#3f7140"/>
+  <rect x="1299" y="445" width="73" height="31" rx="5" fill="#9b7d24"/>
+  <rect x="1376" y="445" width="78" height="31" rx="5" fill="#b6632b"/>
+  <rect x="1458" y="445" width="82" height="31" rx="5" fill="#3f7140"/>
+  <circle cx="1093" cy="536" r="6" fill="#73bf69"/><text class="text muted" x="1108" y="541">FREE</text>
+  <circle cx="1195" cy="536" r="6" fill="#eab839"/><text class="text muted" x="1210" y="541">MODERATE</text>
+  <circle cx="1337" cy="536" r="6" fill="#f28b3c"/><text class="text muted" x="1352" y="541">HEAVY</text>
+  <circle cx="1440" cy="536" r="6" fill="#e24d42"/><text class="text muted" x="1455" y="541">JAM</text>
+  <rect x="1086" y="573" width="454" height="42" rx="8" fill="#11161d"/>
+  <text class="text" x="1104" y="599" fill="#c9d1d9" font-size="14">สถานะคงที่</text>
+  <text class="text" x="1437" y="599" fill="#73bf69" font-size="14" font-weight="650">ปกติ</text>
+
+  <!-- Bottom vehicle gauge -->
+  <rect class="panel" x="28" y="656" width="1016" height="292" rx="12" filter="url(#shadow)"/>
+  <text class="text title" x="54" y="692">จำนวนรถแต่ละประเภท ณ ปัจจุบัน</text>
+  <text class="text muted" x="54" y="716">แสดงค่าล่าสุด ไม่รวมผลซ้ำตามช่วงเวลา</text>
+
+  <text class="text" x="54" y="763" fill="#c9d1d9" font-size="15">รถยนต์</text>
+  <rect x="176" y="743" width="750" height="24" rx="6" fill="#252c35"/>
+  <rect x="176" y="743" width="675" height="24" rx="6" fill="#5794f2"/>
+  <text class="text" x="956" y="763" fill="#f0f4f8" font-size="18" font-weight="700">9</text>
+
+  <text class="text" x="54" y="816" fill="#c9d1d9" font-size="15">มอเตอร์ไซค์</text>
+  <rect x="176" y="796" width="750" height="24" rx="6" fill="#252c35"/>
+  <rect x="176" y="796" width="4" height="24" rx="2" fill="#eab839"/>
+  <text class="text" x="956" y="816" fill="#f0f4f8" font-size="18" font-weight="700">0</text>
+
+  <text class="text" x="54" y="869" fill="#c9d1d9" font-size="15">รถบัส</text>
+  <rect x="176" y="849" width="750" height="24" rx="6" fill="#252c35"/>
+  <rect x="176" y="849" width="4" height="24" rx="2" fill="#b877d9"/>
+  <text class="text" x="956" y="869" fill="#f0f4f8" font-size="18" font-weight="700">0</text>
+
+  <text class="text" x="54" y="922" fill="#c9d1d9" font-size="15">รถบรรทุก</text>
+  <rect x="176" y="902" width="750" height="24" rx="6" fill="#252c35"/>
+  <rect x="176" y="902" width="4" height="24" rx="2" fill="#f28b3c"/>
+  <text class="text" x="956" y="922" fill="#f0f4f8" font-size="18" font-weight="700">0</text>
+
+  <!-- Model detail panel -->
+  <rect class="panel" x="1060" y="656" width="512" height="292" rx="12" filter="url(#shadow)"/>
+  <text class="text title" x="1086" y="692">รายละเอียด Forecast ล่าสุด</text>
+  <line x1="1086" y1="718" x2="1546" y2="718" stroke="#2b333e"/>
+  <text class="text muted" x="1086" y="753">ค่าพยากรณ์</text>
+  <text class="text" x="1492" y="753" fill="#ffb357" font-size="18" font-weight="700">0.24</text>
+  <text class="text muted" x="1086" y="794">ระดับที่ปัดแล้ว</text>
+  <text class="text" x="1460" y="794" fill="#73bf69" font-size="16" font-weight="650">FREE (0)</text>
+  <text class="text muted" x="1086" y="835">พยากรณ์สำหรับเวลา</text>
+  <text class="text" x="1468" y="835" fill="#c9d1d9" font-size="15">14:45:00</text>
+  <text class="text muted" x="1086" y="876">ระยะพยากรณ์</text>
+  <text class="text" x="1487" y="876" fill="#c9d1d9" font-size="15">5 นาที</text>
+  <rect x="1086" y="898" width="460" height="30" rx="6" fill="#15241a" stroke="#2d5333"/>
+  <circle cx="1103" cy="913" r="5" fill="#73bf69"/>
+  <text class="text" x="1116" y="918" fill="#9bd694" font-size="13">Kafka และ InfluxDB ทำงานปกติ</text>
+
+  <text class="text" x="1450" y="966" fill="#59636f" font-size="12">LAYOUT MOCKUP</text>
+</svg>
