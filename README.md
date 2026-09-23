@@ -5,7 +5,7 @@
 สายหนึ่งเข้า InfluxDB ให้ Grafana วาดสถานะปัจจุบัน อีกสายเข้า Kafka ให้โมเดล ML
 ทำนายว่าอีก 5 นาทีจะติดแค่ไหน แล้วเขียนค่าพยากรณ์กลับเข้า InfluxDB ที่เดียวกัน
 
-![สถาปัตยกรรมของระบบ](docs/architecture.svg)
+![สถาปัตยกรรมของระบบ](Mini%20Project/images/system_architecture.png)
 
 กล่องสีน้ำเงินรันบนเครื่องเรา กล่องสีส้มเป็นของกลางบนเครื่องอาจารย์ `172.16.2.117`
 เราไม่ได้รันเอง ต่อเข้าไปใช้อย่างเดียว
@@ -26,7 +26,7 @@
 | 10 | InfluxDB → Grafana | datasource ของ Grafana กลาง | Flux query | ตั้งในหน้า Grafana |
 
 คอขวดอยู่ที่ท่อน 2 ถ้า Mosquitto ไม่ได้รัน ข้อมูลหายตั้งแต่ต้นทางและทุกอย่างหลังจากนั้นเงียบหมด
-วิธีไล่ดูทีละจุดอยู่ใน [docs/running.md](docs/running.md)
+ดักฟังว่าข้อมูลถึง broker จริงไหมด้วย `docker compose exec mosquitto mosquitto_sub -t 'traffic/6620301002' -v`
 
 ## เริ่มใช้งาน
 
@@ -46,7 +46,7 @@ docker compose up -d                       # Mosquitto, Telegraf
 ```
 
 รับภาพจากกล้องจริงใช้ `testmqtt.py 0` หรือ `testmqtt.py rtsp://…`
-อาร์กิวเมนต์ที่เหลือและข้อควรระวังตอนรันอยู่ใน [docs/running.md](docs/running.md)
+อาร์กิวเมนต์ที่เหลือดูได้จาก `testmqtt.py --help`
 
 ## ข้อมูลที่ส่ง
 
@@ -93,9 +93,12 @@ bucket `mini_project` ใช้ร่วมกันทั้งห้อง **�
 
 ## เอกสารละเอียด
 
+เอกสารฉบับเต็มอยู่ในโฟลเดอร์ [Mini Project](Mini%20Project/)
+
 | ไฟล์ | เนื้อหา |
 |---|---|
-| [docs/running.md](docs/running.md) | อาร์กิวเมนต์, `--loop`, ความถี่ในการส่ง, ดักฟังข้อมูลทีละจุดเวลาไล่ปัญหา |
-| [docs/ml.md](docs/ml.md) | โครงสร้างข้อมูลใน InfluxDB, วิธี train, fields ของค่าพยากรณ์ |
-| [docs/grafana.md](docs/grafana.md) | Flux query ของแต่ละ panel และวิธี map สีให้ตรงกันทั้งแดชบอร์ด |
-| `docs/superpowers/` | spec กับ plan เก็บเหตุผลเบื้องหลังการตัดสินใจ |
+| [0. Readme.md](Mini%20Project/0.%20Readme.md) | ภาพรวมระบบและวิธีรัน |
+| [1. Output_Presentation.md](Mini%20Project/1.%20Output_Presentation.md) | หน้าจอ Grafana ทั้ง 6 panel และการ map สี |
+| [2. ML_and_Logic.md](Mini%20Project/2.%20ML_and_Logic.md) | สูตรตัดสินรถติดและโมเดลพยากรณ์ |
+| [3. Data_Pipeline.md](Mini%20Project/3.%20Data_Pipeline.md) | MQTT, Telegraf, Kafka, InfluxDB |
+| [4. Edge_and_Sensing.md](Mini%20Project/4.%20Edge_and_Sensing.md) | แหล่งภาพและการส่งข้อมูลออกจาก Edge |
